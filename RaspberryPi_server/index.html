@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Temperature IOT app</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        p {
+            font-size: 18px;
+            color: #555;
+            margin-bottom: 30px;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        li {
+            background-color: #f9f9f9;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 8px;
+            transition: background-color 0.3s;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        li:hover {
+            background-color: #e9e9e9;
+        }
+
+        a {
+            text-decoration: none;
+            color: #007BFF;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        a:hover {
+            color: #0056b3;
+            text-decoration: underline;
+        }
+
+
+        canvas {
+            margin-top: 30px;
+        }
+
+
+        button {
+            margin: 10px 5px;
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+
+        #button-container {
+            margin-top: 20px;
+            display: none;
+        }
+
+
+        #status-message {
+            margin: 20px 0;
+            font-size: 18px;
+            color: #333;
+        }
+
+
+        footer {
+            margin-top: 30px;
+            font-size: 14px;
+            color: #888;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Temperature IOT app</h1>
+
+
+        <button id="start-meas" onclick="startMeas()">Start measurement</button>
+        
+
+        <button id="stop-meas" onclick="stopMeas()">Stop measurement</button>
+
+        <p id="status-message"></p>
+
+
+        <ul id="file-list">
+
+        </ul>
+
+
+        <canvas id="chart" width="400" height="200" style="display: none;"></canvas>
+
+
+        <div id="button-container">
+            <button id="back-button" onclick="showFileList()">Back</button>
+            <a id="download-button" href="#" download>
+                <button>Download csv</button>
+            </a>
+        </div>
+
+        <!-- Stopka -->
+        <footer>
+            Michał Kowalczyk | © 2024
+        </footer>
+    </div>
+
+    <script>
+        let currentFilePath = ''; 
+        let measProcess = null; 
+
+
+        async function loadFiles() {
+            const response = await fetch('/files');
+            const files = await response.json();
+
+            const fileList = document.getElementById('file-list');
+            fileList.innerHTML = '';
+
+            files.forEach(file => {
+                if (file.name.endsWith('.csv')) {
+                    const li = document.createElement('li');
+                    const a = document.createElement('a');
+                    a.href = "#";
+                    a.textContent = file.name;
+                    a.addEventListener('click', () => loadCSV(file.path));
+                    li.appendChild(a);
+                    fileList.appendChild(li);
+                }
+            });
+        }
+
+
+        function loadCSV(filePath) {
+            currentFilePath = filePath;
+            document.getElementById('download-button').href = filePath;
+
+            Papa.parse(filePath, {
+                download: true,
+                header: true,
+                complete: function(results) {
+                    const data = results.data;
+                    const labels = [];
+                    const temperatures = [];
+
+
+                    data.forEach(row => {
+                        labels.push(row['czas']);
+                        temperatures.push(parseFloat(row['temperatura']));
+                    });
+
+
+                    drawChart(labels, temperatures);
+                }
+            });
+
+
+            document.getElementById('file-list').style.display = 'none';
+            document.getElementById('chart').style.display = 'block';
+            document.getElementById('button-container').style.display = 'flex';
+            document.getElementById('description').textContent = "Temperature in time:";
+        }
+
+
+        function drawChart(labels, temperatures) {
+            const ctx = document.getElementById('chart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Temperature in time',
+                        data: temperatures,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Temperature (°C)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+
+        function showFileList() {
+            document.getElementById('file-list').style.display = 'block';
+            document.getElementById('chart').style.display = 'none';
+            document.getElementById('button-container').style.display = 'none';
+            document.getElementById('description').textContent = "Lista plików CSV w katalogu:";
+        }
+
+
+        function startMeas() {
+            fetch('/start-meas')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('status-message').textContent = data.message;
+                    measProcess = true;
+                })
+                .catch(error => {
+                    document.getElementById('status-message').textContent = 'There is a problem with running the measurement';
+                });
+        }
+
+        function stopMeas() {
+            fetch('/stop-meas')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('status-message').textContent = data.message;
+                    measProcess = false;
+                })
+                .catch(error => {
+                    document.getElementById('status-message').textContent = 'There is a problem with stopping the measurement';
+                });
+        }
+
+
+        document.addEventListener('DOMContentLoaded', loadFiles);
+    </script>
+</body>
+</html>
