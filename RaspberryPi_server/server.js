@@ -33,19 +33,21 @@ app.use('/files', express.static(filesDirectory));
 
 
 app.get('/start-meas', (req, res) => {
-    exec('meas.exe', (err) => {
+    exec('./create_measurements &', (err) => {
         if (err) {
             return res.status(500).json({ message: 'Could not start measurement' });
         }
-        res.json({ message: 'Measurement started' });
+        
     });
+res.json({ message: 'Measurement running...' });
+
 });
 
 
 app.get('/stop-meas', (req, res) => {
-    exec('taskkill /IM meas.exe /F', (err) => {
+    exec('killall create_measurements', (err) => {
         if (err) {
-            return res.status(500).json({ message: 'Could not stop measurement' });
+            return res.status(500).json({ message: 'Measurement is not running.' });
         }
         res.json({ message: 'Measurement stopped' });
     });

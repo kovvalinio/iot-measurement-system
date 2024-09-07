@@ -242,10 +242,10 @@
             document.getElementById('chart').style.display = 'none';
             document.getElementById('button-container').style.display = 'none';
             document.getElementById('description').textContent = "Lista plików CSV w katalogu:";
-        }
-
-
+       }
+	measProcess = false;
         function startMeas() {
+	    if(measProcess == false){
             fetch('/start-meas')
                 .then(response => response.json())
                 .then(data => {
@@ -255,6 +255,7 @@
                 .catch(error => {
                     document.getElementById('status-message').textContent = 'There is a problem with running the measurement';
                 });
+	}
         }
 
         function stopMeas() {
@@ -262,7 +263,12 @@
                 .then(response => response.json())
                 .then(data => {
                     document.getElementById('status-message').textContent = data.message;
-                    measProcess = false;
+		    if(measProcess == true){
+                    	measProcess = false;
+		    	setTimeout(() => {
+                        	window.location.reload();
+                    	}, 500);
+		    }
                 })
                 .catch(error => {
                     document.getElementById('status-message').textContent = 'There is a problem with stopping the measurement';
